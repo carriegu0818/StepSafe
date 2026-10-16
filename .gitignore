@@ -1,0 +1,17 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+outputs/
+logs/
+wandb/
+*.parquet
+!data/rl/labels/*.parquet
+# built by scripts/build_data.py
+data/rl/*.jsonl
+data/eval/*.jsonl
+data/.cache/
+# downloaded models
+checkpoints/
+*.safetensors
+*.pt
+.pytest_cache/

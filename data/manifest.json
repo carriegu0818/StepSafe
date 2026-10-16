@@ -1,0 +1,87 @@
+{
+  "sources": {
+    "agentdog": {
+      "host": "huggingface",
+      "repo": "AI45Research/AgentDoG1.0-Training-Data",
+      "revision": "f4da9da000e1bde5dce851e522bcb1e3c50684ed",
+      "license": "other (see the dataset card)",
+      "files": {
+        "binary": {
+          "path": "AgentDoG-BinarySafety/train.json",
+          "sha256": "9a86a7cfae59c916431ed675225eb34099b8a089b985d6de38aec19a10616c6d"
+        },
+        "fine": {
+          "path": "AgentDoG-FineGrainedTaxonomy/train.json",
+          "sha256": "0ee0356677c3ffe5f5c83db62191efc7c07a6a8ac1d20e88a326c53faeb8ff6c"
+        }
+      }
+    },
+    "assebench": {
+      "host": "github",
+      "repo": "Astarojth/AgentAuditor-ASSEBench",
+      "revision": "fa5f99797073fd9a8d012268bc2b7dc27d05f4b1",
+      "license": "Apache-2.0",
+      "files": {
+        "safety": {
+          "path": "ASSEBench/dataset/AgentJudge-safety.json",
+          "sha256": "376f078871f18c32f66eb9c94a221db9a2223318cf1b9728c89c85af2563e907"
+        },
+        "security": {
+          "path": "ASSEBench/dataset/AgentJudge-security.json",
+          "sha256": "4db9e5c976d0ed35f11b97afcd697259b4954e776777c150f03b3cab5ba31a57"
+        },
+        "rjudge": {
+          "path": "AgentAuditor/data/rjudge.json",
+          "sha256": "523efcafdb167c8d3ed03aebc196e662f42b75c76eef622dfd32cee9a35ebbca"
+        },
+        "agentharm": {
+          "path": "AgentAuditor/data/agentharm.json",
+          "sha256": "f089d9269cd8d974cdda5b6886adb2d24932e6d941650f2a8822e809156d5dcc"
+        }
+      }
+    },
+    "atbench": {
+      "host": "huggingface",
+      "repo": "AI45Research/ATBench",
+      "revision": "4476ef92ed8f85c8d58d8a5b9dfdf55aa7893138",
+      "license": "Apache-2.0",
+      "files": {
+        "test": {
+          "path": "ATBench/test.json",
+          "sha256": "80c534b5f3517c872b528a2e6b64e34495206968edd184f4aed563d39f0cca09"
+        }
+      }
+    }
+  },
+  "outputs": {
+    "rl/train.parquet": {
+      "rows": 3184,
+      "content_sha256": "1a57ccfe9cf9fa3e0a6dfd245ac96e8f1b7080f70735f83bfa00ca3f262ba669",
+      "sha256": "c4918c1ba4399ab600c7cdf167da2141cafe7910e9197eb5767de2b8c7a1be9f"
+    },
+    "rl/trajectory_annotations.jsonl": {
+      "sha256": "b57c5022c4c809ae59aae280800d06268480551cfae57df9eb0aa7448a296007",
+      "lines": 3626
+    },
+    "rl/step_annotations.jsonl": {
+      "sha256": "0db800a70ad736d49ef7c4b95470519e8156896012d4022d0689034c16ad44e7",
+      "lines": 22000
+    },
+    "eval/table1.parquet": {
+      "rows": 4033,
+      "content_sha256": "fa1537d55a87739540dd5f2f22820d7f12200e36f884fb1950ab44692ea3b2fc"
+    },
+    "eval/agentharm_step_labels.jsonl": {
+      "sha256": "ab76240e952a10df7d5a98da3eebbf55b42a6c9f53d9c393352e14d46d321705",
+      "lines": 176
+    },
+    "eval/validation/assebench.parquet": {
+      "rows": 400,
+      "content_sha256": "95f8ad103989f831c096112eafd6eda0079ae948fa435e491beedcc33d69c558"
+    },
+    "eval/validation/atbench.parquet": {
+      "rows": 100,
+      "content_sha256": "0eac586b31d436b653d32919dc7ece2e7e8a853ee98d4299147f5d266fd19b66"
+    }
+  }
+}

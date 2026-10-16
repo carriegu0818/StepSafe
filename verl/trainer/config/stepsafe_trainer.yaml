@@ -1,0 +1,137 @@
+# StepSafe-4B: ASPO training of a Qwen3-4B step-level monitor (Appendix B of the paper).
+# Framework defaults come from ppo_trainer.yaml; every setting of the StepSafe run is below.
+# Paths marked ??? are set by scripts/train_stepsafe_4b.sh.
+defaults:
+  - ppo_trainer
+  - _self_
+
+data:
+  train_files: ???                   # RL replay tasks: 3,184 trajectories, 22,000 annotated steps
+  val_files: ???                     # validation: the 500 ASSE (400) and ATBench (100) episodes of the 750-episode set
+  train_batch_size: 16               # tasks per step
+  val_batch_size: 256
+  max_prompt_length: 16384           # training prompts <= ~9.3k tokens, validation prompts <= ~12k (eval_stepsafe.sh: 20,480)
+  max_response_length: 2048
+  filter_overlong_prompts: True
+  shuffle: True
+  seed: 42
+  truncation: error
+  return_raw_chat: True
+  apply_chat_template_kwargs:
+    enable_thinking: true            # the monitor writes a short <think> block before the verdict
+
+actor_rollout_ref:
+  model:
+    path: ???                        # the supervised warm start (SFT) checkpoint
+    use_remove_padding: True
+    enable_gradient_checkpointing: True
+  actor:
+    optim:
+      lr: 1e-6
+      lr_warmup_steps_ratio: 0.1     # linear warmup over 10% of the 2,985-step schedule, then constant
+    ppo_mini_batch_size: 256
+    ppo_micro_batch_size_per_gpu: 1
+    use_dynamic_bsz: False
+    ppo_max_token_len_per_gpu: 18432 # max_prompt_length + max_response_length
+    loss_agg_mode: token-mean
+    use_kl_loss: True
+    kl_loss_coef: 0.01
+    kl_loss_type: low_var_kl
+    fsdp_config:
+      param_offload: False
+      optimizer_offload: False
+  rollout:
+    name: vllm
+    tensor_model_parallel_size: 2
+    gpu_memory_utilization: 0.55
+    enable_chunked_prefill: False
+    max_model_len: 18432
+    max_num_batched_tokens: 18432
+    enforce_eager: False
+    free_cache_engine: False
+    n: 1                             # the G replays per task come from env.rollout.n
+    temperature: 1.0
+    min_tokens: 0
+    log_prob_micro_batch_size_per_gpu: 1
+    val_kwargs:                      # greedy decoding for validation
+      temperature: 0.0
+      do_sample: False
+      n: 1
+  ref:
+    log_prob_micro_batch_size_per_gpu: 1
+    fsdp_config:
+      param_offload: True
+
+algorithm:
+  # Critic-free: the advantages are SAPO's (verl/trainer/ppo/sapo.py).
+  sapo:
+    # Class-balancing factors (Balance-GRPO of StepGuard) applied on top of the equal
+    # per-(task, run, class) cell weights.
+    balance:
+      enabled: true
+      target_gap: 0.0
+      lambda: 2.0
+      gap_clip: 0.5
+      deadband: 0.02
+      smoothing_alpha: 1.0
+      class_weight_min: 0.5
+      class_weight_max: 2.0
+      gap_weight_min: 0.5
+      gap_weight_max: 2.0
+      effective_weight_min: 0.75
+      effective_weight_max: 1.5
+  afsd:
+    coef: 0.01                       # lambda in L_SAPO + lambda * L_AFSD
+    gate_beta: 5.0                   # beta of the sigmoid gate
+    trajectory_annotations: null     # per-trajectory annotations (label, landmarks, step labels); required for training
+    step_annotations: null           # annotated ten-field verdict of every step; required for training
+    false_alarm_rubric:
+      log_path: ${trainer.default_local_dir}/false_alarm_log.jsonl
+      rubric_path: ${trainer.default_local_dir}/false_alarm_rubric.json
+      evolve_every: 2048             # teacher calls between rule-mining rounds
+      min_cluster: 3                 # cases (from >= 2 trajectories) needed for a candidate rule
+      max_rules: 64                  # rules are keyed by (claimed failure, action surface)
+      ucb_c: 0.5
+
+env:
+  env_name: stepsafe
+  seed: 42
+  max_steps: 100
+  rollout:
+    n: 8                             # G replays per task, temperature 1.0
+  # Observation x_t in training, validation and evaluation: the full visible history within a
+  # character budget.
+  action_history_mode: full
+  max_history_chars: 12000
+  context_roles: user|environment|policy   # shown as history, never judged
+  ask_risk_threshold: 50             # an ASK at risk >= 50 counts as an intervention
+  # Overrides for validation and evaluation replays.
+  # env.validation.action_history_mode=evidence_retrieval switches them to evidence retrieval
+  # over earlier records (memory 4,096 / read 2,048 tokens).
+  validation:
+    action_history_mode: full
+    bounded_memory_tokens: 4096
+    bounded_memory_read_tokens: 2048
+    bounded_memory_tokenizer: ${actor_rollout_ref.model.path}
+
+trainer:
+  project_name: stepsafe
+  experiment_name: stepsafe_4b
+  logger: ['console', 'wandb']
+  n_gpus_per_node: 2
+  nnodes: 1
+  total_epochs: 15                   # sets the LR schedule length (199 steps/epoch x 15 = 2,985)
+  stop_after_step: 500               # train 500 RL steps; report the best step by validation J
+  save_freq: 10
+  test_freq: 10
+  val_before_train: True
+  resume_mode: auto
+  default_local_dir: ???             # run directory (checkpoints, rubric, validation records)
+  # Keep the 3 saved steps with the best validation J plus the latest; only the latest keeps
+  # its optimizer state.
+  keep_top_k_ckpt: 3
+  keep_top_k_metric: val/j
+  keep_top_k_prune_optim: True
+  log_all_metrics: False             # True also logs rollout, SAPO and AFSD diagnostics and timing
+  agentharm_step_labels: null        # harm-step labels of AgentHarm, for its ASR cell
+  validation_records_path: ${trainer.default_local_dir}/validation/validation_records.jsonl

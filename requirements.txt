@@ -1,0 +1,24 @@
+# Tested stack (Python 3.12, CUDA 12.8). Install torch, vllm and flash-attn first (see README.md).
+torch==2.8.0
+vllm==0.11.0
+flash-attn==2.8.3.post1
+transformers==4.57.3
+ray[default]==2.50.0
+tensordict==0.10.0
+torchdata==0.11.0
+accelerate==1.14.0
+peft==0.19.1
+datasets==5.0.0
+hydra-core==1.3.3
+omegaconf==2.3.1
+numpy==2.2.6
+pandas==3.0.3
+pyarrow==24.0.0
+pydantic==2.13.4
+PyYAML==6.0.3
+codetiming==1.4.0
+dill==0.4.1
+psutil
+packaging
+wandb==0.27.2
+pytest

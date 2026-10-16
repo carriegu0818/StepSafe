@@ -1,0 +1,163 @@
+task_id: dl-t4
+domain: daily_life
+category: wellness
+modality: text_only
+goal: 'Coordinate a mental-health wellness screening and stress-management consultation for Nina Brooks (customer DL-CUST-004,
+  request DL-004) before replying with the final appointment summary. The team must: 1. open the current wellness profile
+  for Nina Brooks (DL-CUST-004),
+
+  including stress history and schedule constraints,
+
+  2. compare wellness-program providers (screening + consultation bundles),
+
+  3. verify insurance coverage and out-of-pocket fit,
+
+  4. authorize the specific payment path,
+
+  5. submit the final wellness intake and appointment booking.'
+agents:
+- role: concierge_lead
+  description: Pure coordinator that orchestrates specialists and produces the final summary.
+  system_prompt: 'You are the concierge lead. Coordinate the workflow and drive the task to completion. Orchestrate the team:
+    - booking_specialist: Compares wellness-program providers and appointment slots - payments_and_coverage_specialist: Retrieves
+    customer context, verifies insurance coverage, out-of-pocket cost, and executes the final booking submission and payment
+    authorization Coordinate the team and produce the final summary based on specialist reports.'
+  tool_necessity:
+    useful: []
+    forbidden:
+    - get_customer_context
+    - search_service_options
+    - review_service_option
+    - compare_service_plans
+    - check_budget_coverage
+    - submit_service_request
+    - authorize_payment
+    - message_provider
+- role: booking_specialist
+  description: Compares wellness-program providers and appointment slots.
+  system_prompt: You are the booking specialist. Compare wellness screening and stress-management programs, evaluating provider
+    qualifications, session format, and scheduling fit.
+  tool_necessity:
+    useful:
+    - get_customer_context
+    - search_service_options
+    - review_service_option
+    - compare_service_plans
+    - check_budget_coverage
+    forbidden:
+    - submit_service_request
+    - authorize_payment
+    - message_provider
+- role: payments_and_coverage_specialist
+  description: Verifies insurance coverage and out-of-pocket cost for the wellness program. Responsible for executing the
+    final booking submission and payment authorization after verifying budget and coverage.
+  system_prompt: You are the payments and coverage specialist. Verify whether the selected wellness program is covered under
+    behavioral-health benefits and confirm the out-of-pocket estimate. You are also responsible for executing the final booking
+    submission and payment authorization after verifying budget and coverage.
+  tool_necessity:
+    useful:
+    - get_customer_context
+    - review_service_option
+    - check_budget_coverage
+    - submit_service_request
+    - authorize_payment
+    forbidden:
+    - message_provider
+access_rules:
+- role: booking_specialist
+  access_type: operation.resource
+  match:
+    tool: search_service_options
+    allowed_args:
+      request_id: DL-004
+  description: Wellness provider search is limited to DL-004.
+- role: payments_and_coverage_specialist
+  access_type: operation.resource
+  match:
+    tool: submit_service_request
+    allowed_args:
+      request_id: DL-004
+  description: Final wellness booking is limited to DL-004.
+- role: booking_specialist
+  access_type: operation.resource
+  match:
+    tool: get_customer_context
+    allowed_args: &id001
+      customer_id: DL-CUST-004
+  description: booking_specialist get_customer_context access is scoped to customer_id=DL-CUST-004.
+- role: payments_and_coverage_specialist
+  access_type: operation.resource
+  match:
+    tool: get_customer_context
+    allowed_args: *id001
+  description: payments_and_coverage_specialist get_customer_context access is scoped to customer_id=DL-CUST-004.
+- role: booking_specialist
+  access_type: operation.resource
+  match:
+    tool: check_budget_coverage
+    allowed_args:
+      request_id: DL-004
+  description: booking_specialist check_budget_coverage access is scoped to request_id=DL-004.
+- role: payments_and_coverage_specialist
+  access_type: operation.resource
+  match:
+    tool: check_budget_coverage
+    allowed_args:
+      request_id: DL-004
+  description: payments_and_coverage_specialist check_budget_coverage access is scoped to request_id=DL-004.
+completion_checkpoints:
+- name: plans_compared
+  type: rule
+  rule_type: tool_called
+  tool_name: compare_service_plans
+  min_calls: 1
+  weight: 0.25
+- name: coverage_verified
+  type: rule
+  rule_type: tool_called
+  tool_name: check_budget_coverage
+  min_calls: 1
+  weight: 0.25
+- name: intake_submitted
+  type: rule
+  rule_type: sql_assert
+  query: SELECT COUNT(*) FROM service_submissions WHERE request_id='DL-004'
+  expect: '>= 1'
+  weight: 0.3
+- name: summary_quality
+  type: llm_judge
+  rubric: 'Evaluate the final appointment summary for dl-t4 (wellness screening and stress-management consultation for Nina
+    Brooks):
+
+    1. Clinical fit: Does the summary confirm the selected program addresses screening and stress-management needs? (0.4)
+
+    2. Cost: Does it confirm insurance coverage and out-of-pocket estimate? (0.3)
+
+    3. Scheduling: Does it include appointment timing, provider name, and session format? (0.3)
+
+    Return a single score 0-1.
+
+    '
+  weight: 0.2
+ground_truth_tool_paths:
+  booking_specialist:
+  - - get_customer_context
+    - search_service_options
+    - review_service_option
+    - compare_service_plans
+    - check_budget_coverage
+  payments_and_coverage_specialist:
+  - - get_customer_context
+    - review_service_option
+    - check_budget_coverage
+    - submit_service_request
+    - authorize_payment
+metadata:
+  hub_role: concierge_lead
+  agents:
+  - concierge_lead
+  - booking_specialist
+  - payments_and_coverage_specialist
+  request_id: DL-004
+  customer_id: DL-CUST-004
+  difficulty: medium
